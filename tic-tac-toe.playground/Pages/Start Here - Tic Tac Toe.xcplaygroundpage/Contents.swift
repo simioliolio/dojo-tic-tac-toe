@@ -27,8 +27,8 @@ import XCTest
 
 // implement me!
 func display(grid: [String]) -> String {
-    
-    return grid.debugDescription
+    let formattedGrid = " \(grid[0]) | \(grid[1]) | \(grid[2])\n \(grid[3]) | \(grid[4]) | \(grid[5])\n \(grid[6]) | \(grid[7]) | \(grid[8])\n"
+    return formattedGrid
 }
 
 let rawGrid = ["X", "X", "O", "X", "O", "O", "O", " ", " "]
