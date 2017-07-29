@@ -12,6 +12,14 @@ import XCTest
 enum Playable {
     case x
     case o
+    func inverse() -> Playable { // added
+        switch (self) {
+        case .o:
+            return Playable.x
+        case .x:
+            return Playable.o
+        }
+    }
 }
 
 // Each cell in our grid can either be `played` or `empty`, if it was `played` then it is one of the two `Playable` types
@@ -66,6 +74,9 @@ extension Position: Hashable {
     var hashValue: Int {
         return row.hashValue ^ col.hashValue
     }
+}
+
+extension Position: Equatable {
     static func == (lhs: Position, rhs: Position) -> Bool {
         return lhs.row == rhs.row && lhs.col == rhs.col
     }
@@ -89,21 +100,42 @@ struct Cell {
  - Experiment:
  Your challenge is to populate the `moves` Array with optional closures representing the possible acceptable moves based on the current state of the game.
  */
+
 let positions: [Position] = [Position(row: .top, col: .left), Position(row: .top, col: .middle), Position(row: .top, col: .right),
                              Position(row: .middle, col: .left), Position(row: .middle, col: .middle), Position(row: .middle, col: .right),
                              Position(row: .bottom, col: .left), Position(row: .bottom, col: .middle), Position(row: .bottom, col: .right)]
 
+let winningCombos = [[positions[0], positions[1], positions[2]],
+                     [positions[3], positions[4], positions[5]],
+                     [positions[6], positions[7], positions[8]],
+                     [positions[0], positions[3], positions[6]],
+                     [positions[1], positions[4], positions[7]],
+                     [positions[2], positions[5], positions[8]],
+                     [positions[0], positions[4], positions[7]],
+                     [positions[2], positions[4], positions[6]]]
+
 typealias Move = ()->Game
 
-// implement me!
 func movesFor(grid: [Cell], playing: Playable) -> [Position:Move] {
-    return [:]
+    guard winTest(grid: grid) == false else {
+        return [:]
+    }
+    var moves: [Position:Move] = [:]
+    for cell in grid {
+        if cell.symbol == .empty {
+            let futureGrid = grid.map { ($0.position == cell.position) ? Cell(symbol: .played(playing), position: $0.position) : $0 }
+            moves[cell.position] = {
+                return Game(with: futureGrid, last: playing)
+            }
+        }
+    }
+    return moves
 }
 
 struct Game: CustomStringConvertible {
     let grid: [Cell]
     let moves: [Position:Move]
-    var description: String { return "\(grid)"} // and this
+    var description: String { return "\(grid)"}
     
     init(starting: Playable){
         grid = positions.map{ Cell(symbol: .empty, position: $0) }
@@ -112,33 +144,47 @@ struct Game: CustomStringConvertible {
     
     init(with newGrid: [Cell], last: Playable) {
         grid = newGrid
-        let nextMover = Playable.x // 🐞
-        moves = movesFor(grid: grid, playing: nextMover)
+        moves = movesFor(grid: grid, playing: last.inverse())
     }
+}
+
+func winTest(grid: [Cell]) -> Bool {
+    let allOCells = grid.filter {$0.symbol == Symbol.played(Playable.o)}
+    let allXCells = grid.filter {$0.symbol == Symbol.played(Playable.x)}
+    for winningCombo in winningCombos {
+        if (allOCells.map{$0.position}.contains(winningCombo[0]) && allOCells.map{$0.position}.contains(winningCombo[1]) && allOCells.map{$0.position}.contains(winningCombo[2])) {
+            return true
+        }
+        if (allXCells.map{$0.position}.contains(winningCombo[0]) && allXCells.map{$0.position}.contains(winningCombo[1]) && allXCells.map{$0.position}.contains(winningCombo[2])) {
+            return true
+        }
+    }
+    return false
 }
 
 let initial = Game(starting: .o)
 
-//XCTAssertEqual(9, initial.moves.count, "should have nine possible moves")
-//
-//let topLeft = Position(row: .top, col: .left)
-//XCTAssertNotNil(initial.moves[topLeft], "there should be a move available")
-//let first: Game = initial.moves[topLeft]!()
-//
-//XCTAssertNil(first.moves[topLeft], "we played top, left already so it should be nil")
-//
-//let second = first.moves[Position(row: .bottom, col: .right)]!()
-//let availableMoves = second.moves.count
-//
-//XCTAssertEqual(7, availableMoves, "there should only be 7 moves left")
-//XCTAssert(.played(Playable.x) == second.grid[8].symbol, "second move is by x")
-//
-//let third = second.moves[Position(row: .top, col: .middle)]!()
-//let fourth = third.moves[Position(row: .bottom, col: .middle)]!()
-//let fifth = fourth.moves[Position(row: .top, col: .right)]!()
-//let noMore = fifth.moves.count
-//
-//XCTAssertEqual(0, noMore, "this game is over")
+XCTAssertEqual(9, initial.moves.count, "should have nine possible moves")
+let topLeft = Position(row: .top, col: .left)
+XCTAssertNotNil(initial.moves[topLeft], "there should be a move available")
+let first: Game = initial.moves[topLeft]!()
+XCTAssertNil(first.moves[topLeft], "we played top, left already so it should be nil")
+let bottomRight = Position(row: .bottom, col: .right)
+XCTAssertNotNil(first.moves[bottomRight], "have not played bottom right yet")
+
+let second = first.moves[bottomRight]!()
+XCTAssertNil(second.moves[topLeft])
+XCTAssertNil(second.moves[bottomRight])
+let availableMoves = second.moves.count
+XCTAssertEqual(7, availableMoves, "there should only be 7 moves left")
+XCTAssert(.played(Playable.x) == second.grid[8].symbol, "second move is by x")
+
+let third = second.moves[Position(row: .top, col: .middle)]!()
+let fourth = third.moves[Position(row: .bottom, col: .middle)]!()
+let fifth = fourth.moves[Position(row: .top, col: .right)]!()
+let noMore = fifth.moves.count
+
+XCTAssertEqual(0, noMore, "this game is over")
 
 /*:
  - Important:
