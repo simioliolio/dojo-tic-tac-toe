@@ -117,19 +117,24 @@ let winningCombos = [[positions[0], positions[1], positions[2]],
 typealias Move = ()->Game
 
 func movesFor(grid: [Cell], playing: Playable) -> [Position:Move] {
+    
+    var possibleMoves: [Position:Move] = [:]
+    
+    // check if the grid has been won. if it has, there are no further moves possible, return the unpopulated dictionary.
     guard winTest(grid: grid) == false else {
-        return [:]
+        return possibleMoves
     }
-    var moves: [Position:Move] = [:]
+    
+    // if a cell in the grid is empty, it represents a possible move. construct a future grid with the empty cell having been played. then use that grid to create a game in a closure, and add to possible moves
     for cell in grid {
         if cell.symbol == .empty {
             let futureGrid = grid.map { ($0.position == cell.position) ? Cell(symbol: .played(playing), position: $0.position) : $0 }
-            moves[cell.position] = {
+            possibleMoves[cell.position] = {
                 return Game(with: futureGrid, last: playing)
             }
         }
     }
-    return moves
+    return possibleMoves
 }
 
 struct Game: CustomStringConvertible {
@@ -137,30 +142,37 @@ struct Game: CustomStringConvertible {
     let moves: [Position:Move]
     var description: String { return "\(grid)"}
     
+    /** make a game with an empty grid
+     */
     init(starting: Playable){
         grid = positions.map{ Cell(symbol: .empty, position: $0) }
         moves = movesFor(grid: grid, playing: starting)
     }
     
+    /** make a game using an existing grid, and the Playable that was playing the grid last time (turn-taking is handled here)
+     */
     init(with newGrid: [Cell], last: Playable) {
         grid = newGrid
         moves = movesFor(grid: grid, playing: last.inverse())
     }
 }
 
+/** check a grid for a winning combo
+ */
 func winTest(grid: [Cell]) -> Bool {
-    let allOCells = grid.filter {$0.symbol == Symbol.played(Playable.o)}
-    let allXCells = grid.filter {$0.symbol == Symbol.played(Playable.x)}
+    let allOPositions = grid.filter {$0.symbol == Symbol.played(Playable.o)}.map{$0.position}
+    let allXPositions = grid.filter {$0.symbol == Symbol.played(Playable.x)}.map{$0.position}
     for winningCombo in winningCombos {
-        if (allOCells.map{$0.position}.contains(winningCombo[0]) && allOCells.map{$0.position}.contains(winningCombo[1]) && allOCells.map{$0.position}.contains(winningCombo[2])) {
+        if (allOPositions.contains(winningCombo[0]) && allOPositions.contains(winningCombo[1]) && allOPositions.contains(winningCombo[2])) {
             return true
         }
-        if (allXCells.map{$0.position}.contains(winningCombo[0]) && allXCells.map{$0.position}.contains(winningCombo[1]) && allXCells.map{$0.position}.contains(winningCombo[2])) {
+        if (allXPositions.contains(winningCombo[0]) && allXPositions.contains(winningCombo[1]) && allXPositions.contains(winningCombo[2])) {
             return true
         }
     }
     return false
 }
+
 
 let initial = Game(starting: .o)
 
